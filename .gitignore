@@ -1,0 +1,38 @@
+# --- Dependencies ---
+/vendor/
+/node_modules/
+
+# --- Security & Config ---
+.env
+config.php
+libraries/config.php
+# Lưu ý: Nên tạo file config.php.example để lưu mẫu nhưng ko lưu pass
+
+# --- Logs & Databases ---
+*.log
+*.sql
+logs/
+
+# --- OS & Editors ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# --- Temp & Build ---
+tmp/
+dist/ 
+
+# --- Robot Screenshots (Dữ liệu cực kỳ nhạy cảm) ---
+# Vì Robot tự chụp ảnh màn hình lỗi (chứa ảnh đăng nhập Facebook thật)
+robot_error_id_*.png
+robot_view_id_*.png
+error_id_*.png
+
+# --- Puppeteer & Chrome ---
+# Nếu Robot tự tải trình duyệt về thư mục dự án
+.local-chromium/
+
+public_html/api/tool/
+sota-robot/
