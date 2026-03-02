@@ -1,6 +1,7 @@
 # --- Dependencies ---
 /vendor/
 /node_modules/
+sota-robot/node_modules/
 
 # --- Security & Config ---
 .env
@@ -33,6 +34,3 @@ error_id_*.png
 # --- Puppeteer & Chrome ---
 # Nếu Robot tự tải trình duyệt về thư mục dự án
 .local-chromium/
-
-public_html/api/tool/
-sota-robot/
