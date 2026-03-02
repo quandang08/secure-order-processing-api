@@ -5,8 +5,7 @@ sota-robot/node_modules/
 
 # --- Security & Config ---
 .env
-config.php
-libraries/config.php
+
 # Lưu ý: Nên tạo file config.php.example để lưu mẫu nhưng ko lưu pass
 
 # --- Logs & Databases ---
