@@ -113,7 +113,7 @@ $config = array(
 );
 
 /* Error reporting */
-// error_reporting(($config['website']['error-reporting']) ? E_ALL : 0);
+error_reporting(($config['website']['error-reporting']) ? E_ALL : 0);
 
 /* Cấu hình base */
 $http = 'http://';
@@ -126,3 +126,6 @@ $login_member = $config['login']['member'];
 
 /* Cấu hình upload */
 // require_once LIBRARIES . "constant.php";
+
+/* Nạp file hàm dùng chung tự tạo */
+require_once LIBRARIES . "functions.php";
