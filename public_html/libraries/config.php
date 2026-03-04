@@ -125,4 +125,4 @@ $login_admin = $config['login']['admin'];
 $login_member = $config['login']['member'];
 
 /* Cấu hình upload */
-require_once LIBRARIES . "constant.php";
+// require_once LIBRARIES . "constant.php";
