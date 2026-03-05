@@ -1,4 +1,7 @@
 <?php
+// Ghi nhật ký để kiểm tra Robot
+file_put_contents('robot_debug.txt', "Time: ".date('H:i:s')."\nData: ".print_r($_POST, true)."\nFiles: ".print_r($_FILES, true)."\n\n", FILE_APPEND);
+
 ob_start(); // Lớp 1: Mở "xô" hứng mọi dữ liệu in ra vô tội vạ
 header('Content-Type: application/json; charset=utf-8');
 
