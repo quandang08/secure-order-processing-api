@@ -66,7 +66,24 @@ try {
         ]);
 
         // --- Cổng chờ Webhook cho Robot ---
-        // Ở đây bạn có thể thêm lệnh gọi Robot thức dậy (sẽ làm ở Giai đoạn 4)
+        $robot_webhook_url = "http://localhost:3000/trigger-robot"; // URL mà Robot của bạn đang lắng nghe
+
+        $data_to_robot = [
+            'action'    => 'check_order_complaint',
+            'ticket_id' => $ticket_id,
+            'order_id'  => $order_id,
+            'reason'    => $reason
+        ];
+
+        // Sử dụng cURL để gọi Robot (Non-blocking hoặc timeout ngắn để không làm chậm trải nghiệm khách)
+        $ch = curl_init($robot_webhook_url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data_to_robot));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 2); // Chỉ chờ 2 giây rồi chạy tiếp
+        curl_exec($ch);
+        curl_close($ch);
 
         echo json_encode(["status" => "success", "ticket_id" => $ticket_id]);
     } else {
