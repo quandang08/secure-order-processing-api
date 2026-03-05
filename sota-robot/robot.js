@@ -1,97 +1,117 @@
 const axios = require("axios");
 const puppeteer = require("puppeteer");
+const fs = require("fs");
+const FormData = require("form-data");
+const path = require("path");
+const express = require("express");
+const app = express();
+app.use(express.json());
 
 const API_BASE_URL = "http://duanmoi.local/api/tool";
 const API_KEY = "SOTA_TOOL_SECRET_@2026";
-const { authenticator } = require('otplib');
 
-async function processOrder(order) {
-  const browser = await puppeteer.launch({
-    headless: false,
-    defaultViewport: null,
-    args: ["--start-maximized", "--lang=en-US"],
-  });
+// Hàm phụ trợ để Robot gửi tin nhắn vào phòng chat
+async function sendRobotMessage(ticketId, message, photoPath = null) {
+  try {
+    const form = new FormData();
+    form.append("ticket_id", ticketId);
+    form.append("sender_id", 0); // 0 là Robot/Hệ thống
+    form.append("sender_role", "admin");
+    form.append("message", `[ROBOT SOTA]: ${message}`);
+
+    if (photoPath && fs.existsSync(photoPath)) {
+      form.append("photo", fs.createReadStream(photoPath));
+    }
+
+    await axios.post(`${API_BASE_URL}/send_message.php`, form, {
+      headers: {
+        ...form.getHeaders(),
+        "X-API-KEY": API_KEY,
+      },
+    });
+    console.log("🤖 Robot đã gửi báo cáo vào phòng chat.");
+  } catch (e) {
+    console.error("❌ Robot không thể gửi tin nhắn:", e.message);
+  }
+}
+
+// Cổng tiếp nhận lệnh từ create_ticket.php
+app.post("/trigger-robot", async (req, res) => {
+  const { ticket_id, order_id, reason } = req.body;
+  res.send({ status: "Robot is working" }); // Phản hồi ngay cho PHP để khách không phải đợi
+
+  console.log(
+    `\n🕵️ Robot nhận lệnh kiểm tra đơn #${order_id} (Ticket #${ticket_id})`,
+  );
+
+  // Lấy lại thông tin acc từ đơn hàng để kiểm tra
+  try {
+    const orderRes = await axios.get(
+      `${API_BASE_URL}/get_order_by_id.php?id=${order_id}`,
+      {
+        headers: { "X-API-KEY": API_KEY },
+      },
+    );
+    const order = orderRes.data.data;
+
+    // Tiến hành kiểm tra bằng Puppeteer
+    const result = await processOrder(order, ticket_id);
+
+    if (result.status === "failed") {
+      await sendRobotMessage(
+        ticket_id,
+        `Phát hiện lỗi: ${result.error}. Xem ảnh chụp màn hình bên dưới.`,
+        result.screenshot,
+      );
+    } else {
+      await sendRobotMessage(
+        ticket_id,
+        "Kết quả kiểm tra: Đăng nhập thành công. Tài khoản vẫn hoạt động bình thường.",
+      );
+    }
+  } catch (e) {
+    console.error("Lỗi thực thi Robot:", e.message);
+  }
+});
+
+async function processOrder(order, ticket_id = null) {
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
+  const screenshotName = `ticket_${ticket_id}_error.png`;
 
   try {
-    console.log(`🚀 Robot đang tiến vào Facebook: ${order.account}`);
     await page.goto("https://www.facebook.com/", { waitUntil: "networkidle2" });
-
-    // Xử lý bảng thông báo Cookies (nếu có)
-    try {
-      const cookieBtn =
-        'button[data-testid="cookie-policy-manage-dialog-accept-button"]';
-      await page.waitForSelector(cookieBtn, { timeout: 3000 });
-      await page.click(cookieBtn);
-    } catch (e) {}
-
-    // Tìm và điền Email/Pass
-    const emailSelector = 'input[name="email"], #email';
-    await page.waitForSelector(emailSelector, { timeout: 10000 });
-    await page.type(emailSelector, order.account, { delay: 100 });
-    await page.type('input[name="pass"], #pass', order.password, {
-      delay: 100,
-    });
-
-    console.log("✍️ Đã điền xong. Đang thực hiện đăng nhập...");
-
+    await page.type('input[name="email"]', order.account);
+    await page.type('input[name="pass"]', order.password);
     await page.keyboard.press("Enter");
-
-    // Đợi trang chuyển hướng sau khi đăng nhập (Tối đa 15 giây)
-    console.log("⏳ Đang đợi Facebook phê duyệt đăng nhập...");
     await new Promise((r) => setTimeout(r, 10000));
 
-    // Kiểm tra xem có bị bắt nhập mã 2FA không
-    if (page.url().includes("checkpoint")) {
-      console.log("🛡️ Tài khoản yêu cầu mã 2FA!");
-      // Chỗ này sau này sẽ thêm code giải mã 2FA
+    // Kiểm tra Checkpoint
+    if (
+      page.url().includes("checkpoint") ||
+      page.content().includes("checkpoint")
+    ) {
+      throw new Exception("Bị chặn bởi Checkpoint/2FA");
     }
 
+    // Kiểm tra sai mật khẩu
+    const loginError = await page.$('div[role="alert"]');
+    if (loginError)
+      throw new Exception("Sai mật khẩu hoặc tài khoản bị vô hiệu hóa");
+
     await browser.close();
-    return { status: "completed", new_password: "Pass_Moi_OK" };
+    return { status: "success" };
   } catch (error) {
-    await page.screenshot({ path: `robot_error_id_${order.id}.png` });
-    console.error(`❌ Đơn #${order.id} thất bại. Lỗi: ${error.message}`);
+    await page.screenshot({ path: screenshotName });
     await browser.close();
-    return { status: "failed", new_password: null };
+    return {
+      status: "failed",
+      error: error.message,
+      screenshot: screenshotName,
+    };
   }
 }
 
-async function startRobot() {
-  console.log("=== Robot SOTA Đang Chạy 24/7 ===");
-
-  while (true) {
-    try {
-      const getRes = await axios.get(`${API_BASE_URL}/get_order.php`, {
-        headers: { "X-API-KEY": API_KEY },
-      });
-
-      if (getRes.data.status === "success") {
-        const order = getRes.data.data;
-        console.log(`\n📦 Nhận đơn #${order.id}`);
-
-        const result = await processOrder(order);
-
-        await axios.post(
-          `${API_BASE_URL}/update_order.php`,
-          {
-            id: order.id,
-            status: result.status,
-            new_password: result.new_password,
-          },
-          { headers: { "X-API-KEY": API_KEY } },
-        );
-
-        console.log(`✅ Đã chốt đơn #${order.id} trạng thái: ${result.status}`);
-      } else {
-        console.log("😴 Hết đơn rồi, nghỉ 30s...");
-        await new Promise((r) => setTimeout(r, 30000));
-      }
-    } catch (e) {
-      console.log("⚠️ Đợi Server phản hồi...");
-      await new Promise((r) => setTimeout(r, 5000));
-    }
-  }
-}
-
-startRobot();
+app.listen(3000, () =>
+  console.log("🚀 Webhook Robot đang lắng nghe tại port 3000"),
+);
