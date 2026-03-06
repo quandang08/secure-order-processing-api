@@ -84,24 +84,31 @@ async function processOrder(order, ticket_id = null) {
     await page.type('input[name="email"]', order.account);
     await page.type('input[name="pass"]', order.password);
     await page.keyboard.press("Enter");
+
+    // Đợi trang tải sau khi nhấn Enter
     await new Promise((r) => setTimeout(r, 10000));
+
+    const pageContent = await page.content();
+    const currentUrl = page.url();
 
     // Kiểm tra Checkpoint
     if (
-      page.url().includes("checkpoint") ||
-      page.content().includes("checkpoint")
+      currentUrl.includes("checkpoint") ||
+      pageContent.includes("checkpoint")
     ) {
-      throw new Exception("Bị chặn bởi Checkpoint/2FA");
+      throw new Error("Bị chặn bởi Checkpoint/2FA");
     }
 
     // Kiểm tra sai mật khẩu
     const loginError = await page.$('div[role="alert"]');
-    if (loginError)
-      throw new Exception("Sai mật khẩu hoặc tài khoản bị vô hiệu hóa");
+    if (loginError) {
+      throw new Error("Sai mật khẩu hoặc tài khoản bị vô hiệu hóa");
+    }
 
     await browser.close();
     return { status: "success" };
   } catch (error) {
+    // Chụp ảnh màn hình khi có bất kỳ lỗi nào xảy ra
     await page.screenshot({ path: screenshotName });
     await browser.close();
     return {
