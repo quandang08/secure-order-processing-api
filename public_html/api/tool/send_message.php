@@ -1,9 +1,12 @@
 <?php
 // Ghi nhật ký để kiểm tra Robot
-file_put_contents('robot_debug.txt', "Time: ".date('H:i:s')."\nData: ".print_r($_POST, true)."\nFiles: ".print_r($_FILES, true)."\n\n", FILE_APPEND);
+file_put_contents('robot_debug.txt', "Time: " . date('H:i:s') . "\nData: " . print_r($_POST, true) . "\nFiles: " . print_r($_FILES, true) . "\n\n", FILE_APPEND);
 
 ob_start(); // Lớp 1: Mở "xô" hứng mọi dữ liệu in ra vô tội vạ
 header('Content-Type: application/json; charset=utf-8');
+
+$lib_dir = dirname(__FILE__, 3) . '/libraries/';
+if (!defined('LIBRARIES')) define('LIBRARIES', $lib_dir);
 
 try {
     require_once "../../libraries/config.php";
@@ -19,7 +22,7 @@ try {
 
     $ticket_id   = (int)($_POST['ticket_id'] ?? 0);
     $sender_id   = (int)($_POST['sender_id'] ?? 0);
-    $sender_role = $_POST['sender_role'] ?? ''; 
+    $sender_role = $_POST['sender_role'] ?? '';
     $message     = trim($_POST['message'] ?? '');
 
     if ($ticket_id <= 0 || empty($message)) {
@@ -48,17 +51,21 @@ try {
     $result = $d->insert('ticket_messages', $data);
 
     if ($result) {
-        $d->where('id', $ticket_id)->update('ticket', ['last_message_at' => $d->now()]);
-        
-        // Lớp 3: Đổ sạch "rác" (số 1, khoảng trắng) trong xô đi trước khi in JSON thật
-        ob_end_clean(); 
+        $d->where('id', $ticket_id)->update('table_ticket', ['last_message_at' => $d->now()]);
+
+        ob_end_clean();
         echo json_encode(["status" => "success", "msg_id" => $result]);
         exit;
     } else {
-        throw new Exception("Insert failed");
+        $errorInfo = $d->getLastError();
+        throw new Exception("Lỗi SQL chi tiết: " . json_encode($d->getLastError()) . " - Data: " . json_encode($data));
     }
-
-} catch (Exception $e) {
-    ob_end_clean(); // Xóa sạch rác nếu có lỗi xảy ra
-    echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+} catch (Throwable $e) {
+    if (ob_get_length()) ob_end_clean();
+    echo json_encode([
+        "status" => "error",
+        "message" => $e->getMessage(),
+        "file" => $e->getFile(),
+        "line" => $e->getLine()
+    ]);
 }
