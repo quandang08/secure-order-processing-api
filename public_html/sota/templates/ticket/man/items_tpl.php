@@ -25,4 +25,7 @@
             <?php } ?>
         </tbody>
     </table>
+    <div class="card-footer text-sm pb-0">
+        <?= (isset($paging) && $paging != '') ? $paging : '' ?>
+    </div>
 </div>

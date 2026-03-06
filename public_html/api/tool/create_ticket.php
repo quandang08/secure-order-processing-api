@@ -65,8 +65,8 @@ try {
             'created_at' => $d->now()
         ]);
 
-        // --- Cổng chờ Webhook cho Robot ---
-        $robot_webhook_url = "http://localhost:3000/trigger-robot"; // URL mà Robot của bạn đang lắng nghe
+        // Cổng chờ Webhook cho Robot
+        $robot_webhook_url = "http://localhost:3000/trigger-robot";
 
         $data_to_robot = [
             'action'    => 'check_order_complaint',
